@@ -1,0 +1,10 @@
+{
+  "scripts": {
+    "dev": "live-server",
+    "build": "npx tsc -w"
+  },
+  "devDependencies": {
+    "live-server": "^1.2.2",
+    "typescript": "^5.1.3"
+  }
+}
