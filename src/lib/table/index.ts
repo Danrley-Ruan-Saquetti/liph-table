@@ -26,6 +26,8 @@ export type TableLiphModel<T extends object> = {
     forceHeader?: boolean | undefined
   ) => void;
   sortColumn: (column: keyof T) => void;
+  setPage: (page: number) => void;
+  setSize: (size: number) => void;
 };
 
 export function TableLiph<T extends object>(
@@ -160,13 +162,10 @@ export function TableLiph<T extends object>(
     const headers = geTableLiphHeaders({ hidden: false });
     BODY.innerHTML = "";
 
-    const INDEX_INITIAL = STATE.pagination.page * STATE.pagination.size;
-    const INDEX_FINAL = INDEX_INITIAL + STATE.pagination.size;
+    const rangeData = getRangePageData({ data });
 
-    console.log(INDEX_INITIAL, INDEX_FINAL);
-
-    for (let i = INDEX_INITIAL; i < INDEX_FINAL && i < data.length; i++) {
-      const _data = data[i];
+    for (let i = 0; i < rangeData.length; i++) {
+      const _data = rangeData[i];
 
       // # Add Row
       const rowData = document.createElement("div");
@@ -236,7 +235,44 @@ export function TableLiph<T extends object>(
     loadData(DATA);
   };
 
-  const setPage = (page: number) => {};
+  const getRangePageIndex = (
+    pagination: {
+      page: number;
+      size: number;
+    } = STATE.pagination
+  ) => {
+    const initial = pagination.page * pagination.size;
+    const final = initial + pagination.size;
+
+    return { initial, final };
+  };
+
+  const getRangePageData = ({
+    data = DATA,
+    pagination = STATE.pagination,
+  }: {
+    data?: TableLiphData<T>[];
+    pagination?: {
+      page: number;
+      size: number;
+    };
+  }) => {
+    const { final, initial } = getRangePageIndex(pagination);
+
+    return data.filter((_, i) => i >= initial && i <= final);
+  };
+
+  const setPage = (page: number) => {
+    if (DATA.length < getRangePageIndex().final) {
+      STATE.pagination.page = page;
+    }
+  };
+
+  const setSize = (size: number) => {
+    if (size > 0) {
+      STATE.pagination.size = size;
+    }
+  };
 
   setup();
 
@@ -245,5 +281,7 @@ export function TableLiph<T extends object>(
     setColumnHidden,
     reload,
     sortColumn,
+    setPage,
+    setSize,
   };
 }
