@@ -59,6 +59,10 @@ export function TableLiph(classTable, options) {
         return headers;
     };
     // # Use Case
+    const load = (data) => {
+        DATA = data;
+        reload(DATA, STATE.headers.hidden);
+    };
     const reload = (data, forceHeader) => {
         forceHeader && loadHeaders();
         data && loadData(data);
@@ -89,10 +93,6 @@ export function TableLiph(classTable, options) {
         HEADER.appendChild(rowHeader);
         STATE.headers.hidden = false;
     };
-    const load = (data) => {
-        DATA = data;
-        reload(DATA, STATE.headers.hidden);
-    };
     const loadData = (data) => {
         const headers = geTableLiphHeaders({ hidden: false });
         BODY.innerHTML = "";
@@ -115,6 +115,7 @@ export function TableLiph(classTable, options) {
             BODY.appendChild(rowData);
         }
     };
+    const loadPagination = () => { };
     const setColumnHidden = (column, value = true) => {
         const index = OPTIONS.headers.findIndex((_header) => _header.name == column);
         if (index < 0) {

@@ -111,6 +111,10 @@ export function TableLiph<T extends object>(
   };
 
   // # Use Case
+  const load = (data: TableLiphData<T>[]) => {
+    DATA = data;
+    reload(DATA, STATE.headers.hidden);
+  };
 
   const reload = (data?: TableLiphData<T>[], forceHeader?: boolean) => {
     forceHeader && loadHeaders();
@@ -153,11 +157,6 @@ export function TableLiph<T extends object>(
     STATE.headers.hidden = false;
   };
 
-  const load = (data: TableLiphData<T>[]) => {
-    DATA = data;
-    reload(DATA, STATE.headers.hidden);
-  };
-
   const loadData = (data: TableLiphData<T>[]) => {
     const headers = geTableLiphHeaders({ hidden: false });
     BODY.innerHTML = "";
@@ -188,6 +187,8 @@ export function TableLiph<T extends object>(
       BODY.appendChild(rowData);
     }
   };
+
+  const loadPagination = () => {};
 
   const setColumnHidden = (column: keyof T, value = true) => {
     const index = OPTIONS.headers.findIndex(
