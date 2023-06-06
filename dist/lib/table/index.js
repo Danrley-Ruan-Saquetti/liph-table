@@ -14,6 +14,10 @@ export function TableLiph(classTable, options) {
             column: "",
             operator: "",
         },
+        pagination: {
+            page: 1,
+            size: 15,
+        },
     };
     if (!TABLE) {
         throw new Error(`Element table not found`);
@@ -92,7 +96,11 @@ export function TableLiph(classTable, options) {
     const loadData = (data) => {
         const headers = geTableLiphHeaders({ hidden: false });
         BODY.innerHTML = "";
-        data.forEach((_data) => {
+        const INDEX_INITIAL = STATE.pagination.page * STATE.pagination.size;
+        const INDEX_FINAL = INDEX_INITIAL + STATE.pagination.size;
+        console.log(INDEX_INITIAL, INDEX_FINAL);
+        for (let i = INDEX_INITIAL; i < INDEX_FINAL && i < data.length; i++) {
+            const _data = data[i];
             // # Add Row
             const rowData = document.createElement("div");
             rowData.classList.add("table-row", "body");
@@ -107,7 +115,7 @@ export function TableLiph(classTable, options) {
                 rowData.appendChild(cellData);
             });
             BODY.appendChild(rowData);
-        });
+        }
     };
     const setColumnHidden = (column, value = true) => {
         const index = OPTIONS.headers.findIndex((_header) => _header.name == column);
@@ -141,6 +149,7 @@ export function TableLiph(classTable, options) {
         });
         loadData(DATA);
     };
+    const setPage = (page) => { };
     setup();
     return {
         load,
