@@ -6,28 +6,40 @@ type TData<T extends object> = {
 
 type THeader<T extends object> = {
   content: string;
-  name: keyof T;
-  visible?: boolean;
+  name: keyof T extends string ? string : string;
+  hidden?: boolean;
   index?: boolean;
 };
 
-export interface TableLipthOption<T extends object> {
+export interface TableLiphOption<T extends object> {
   headers: THeader<T>[];
   data: TData<T>[];
+}
+
+export interface TableLiphFilter {
+
 }
 
 export type TableLiphModel = {};
 
 export function TableLiph<U extends object>(
   classTable: string,
-  options: TableLipthOption<U>
-): TableLiphModel {
+  options: TableLiphOption<U>
+) {
   const TABLE = document.querySelector(`${classTable}`) as HTMLElement;
   let HEADER: HTMLElement;
   let BODY: HTMLElement;
   let FOOTER: HTMLElement;
+  let OPTIONS: TableLiphOption<U>;
 
-  let OPTIONS: TableLipthOption<U>;
+  const STATE = {
+    headers: {
+      hidden: false
+    },
+    filters: {
+
+    }
+  }
 
   if (!TABLE) {
     throw new Error(`Element table not found`);
@@ -63,52 +75,69 @@ export function TableLiph<U extends object>(
     loadHeaders();
     loadData(OPTIONS.data);
   };
-  
+
   // # Util
-  
-  const getData = () => {
-    options.data.find(_data => {})
+
+  const getHeaders = (args?: Partial<THeader<U>>) => {
+    // @ts-expect-error
+    const headers = args || Object.keys(args).length > 0 ? options.headers.filter(_header => Object.keys(args).find(key => _header[`${key}`] && _header[`${key}`] === args[`${key}`])) : options.headers
+
+    return headers
   }
 
   // # Use Case
-  
+
+  const reload = (data?: TData<U>[], forceHeader?: boolean) => {
+    forceHeader && loadHeaders()
+    data && loadData(data)
+  }
+
   const loadHeaders = () => {
     // # Add Row Header
-    const rowHeaderb = document.createElement("div");
-    rowHeaderb.classList.add("table-row", "header");
+    const rowHeader = document.createElement("div");
+    rowHeader.classList.add("table-row", "header");
 
-    OPTIONS.headers.forEach((_header) => {
-      if (typeof _header.visible != "undefined" || _header.visible) {
-        return;
-      }
+    HEADER.innerHTML = ""
 
+    const headers = getHeaders({ hidden: false })
+
+    headers.forEach((_header) => {
       // # Add Header
       const cellHeader = document.createElement("div");
       cellHeader.classList.add("table-header", "cell");
 
       cellHeader.setAttribute("data-table-header-name", `${_header.name}`);
 
-      cellHeader.innerHTML = _header.content;
+      cellHeader.innerHTML = _header.content || "";
 
-      rowHeaderb.appendChild(cellHeader);
+      rowHeader.appendChild(cellHeader);
     });
 
-    HEADER.appendChild(rowHeaderb);
+    HEADER.appendChild(rowHeader);
+
+    STATE.headers.hidden = false
   };
 
+  const load = (data: TData<U>[]) => {
+    reload(data, STATE.headers.hidden)
+  }
+
   const loadData = (data: TData<U>[]) => {
+    const headers = getHeaders({ hidden: false })
+    BODY.innerHTML = ""
+
     data.forEach((_data) => {
       // # Add Row
       const rowData = document.createElement("div");
       rowData.classList.add("table-row", "body");
 
       for (const key in _data) {
+        if (!headers.find(_header => _header.name == key)) { continue }
+
         // ## Add Data Value
         const cellData = document.createElement("div");
         cellData.classList.add("table-data", "cell");
-
         cellData.innerHTML = _data[key] || "";
-
         rowData.appendChild(cellData);
       }
 
@@ -116,7 +145,23 @@ export function TableLiph<U extends object>(
     });
   };
 
+  const setHidden = (name: keyof U, value = true) => {
+    const index = OPTIONS.headers.findIndex(_header => _header.name == name)
+
+    if (index < 0) {
+      throw new Error(`Column "${typeof name == "string" ? name : ""}" not found`)
+    }
+
+    OPTIONS.headers[index].hidden = value
+
+    STATE.headers.hidden = true
+  }
+
   setup();
 
-  return {};
+  return {
+    load,
+    setHidden,
+    reload
+  };
 }

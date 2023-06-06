@@ -4,6 +4,12 @@ export function TableLiph(classTable, options) {
     let BODY;
     let FOOTER;
     let OPTIONS;
+    const STATE = {
+        headers: {
+            hidden: false
+        },
+        filters: {}
+    };
     if (!TABLE) {
         throw new Error(`Element table not found`);
     }
@@ -33,33 +39,47 @@ export function TableLiph(classTable, options) {
         loadData(OPTIONS.data);
     };
     // # Util
-    const getData = () => {
-        options.data.find(_data => { });
+    const getHeaders = (args) => {
+        // @ts-expect-error
+        const headers = args || Object.keys(args).length > 0 ? options.headers.filter(_header => Object.keys(args).find(key => _header[`${key}`] && _header[`${key}`] === args[`${key}`])) : options.headers;
+        return headers;
     };
     // # Use Case
+    const reload = (data, forceHeader) => {
+        forceHeader && loadHeaders();
+        data && loadData(data);
+    };
     const loadHeaders = () => {
         // # Add Row Header
-        const rowHeaderb = document.createElement("div");
-        rowHeaderb.classList.add("table-row", "header");
-        OPTIONS.headers.forEach((_header) => {
-            if (typeof _header.visible != "undefined" || _header.visible) {
-                return;
-            }
+        const rowHeader = document.createElement("div");
+        rowHeader.classList.add("table-row", "header");
+        HEADER.innerHTML = "";
+        const headers = getHeaders({ hidden: false });
+        headers.forEach((_header) => {
             // # Add Header
             const cellHeader = document.createElement("div");
             cellHeader.classList.add("table-header", "cell");
             cellHeader.setAttribute("data-table-header-name", `${_header.name}`);
-            cellHeader.innerHTML = _header.content;
-            rowHeaderb.appendChild(cellHeader);
+            cellHeader.innerHTML = _header.content || "";
+            rowHeader.appendChild(cellHeader);
         });
-        HEADER.appendChild(rowHeaderb);
+        HEADER.appendChild(rowHeader);
+        STATE.headers.hidden = false;
+    };
+    const load = (data) => {
+        reload(data, STATE.headers.hidden);
     };
     const loadData = (data) => {
+        const headers = getHeaders({ hidden: false });
+        BODY.innerHTML = "";
         data.forEach((_data) => {
             // # Add Row
             const rowData = document.createElement("div");
             rowData.classList.add("table-row", "body");
             for (const key in _data) {
+                if (!headers.find(_header => _header.name == key)) {
+                    continue;
+                }
                 // ## Add Data Value
                 const cellData = document.createElement("div");
                 cellData.classList.add("table-data", "cell");
@@ -69,6 +89,18 @@ export function TableLiph(classTable, options) {
             BODY.appendChild(rowData);
         });
     };
+    const setHidden = (name, value = true) => {
+        const index = OPTIONS.headers.findIndex(_header => _header.name == name);
+        if (index < 0) {
+            throw new Error(`Column "${typeof name == "string" ? name : ""}" not found`);
+        }
+        OPTIONS.headers[index].hidden = value;
+        STATE.headers.hidden = true;
+    };
     setup();
-    return {};
+    return {
+        load,
+        setHidden,
+        reload
+    };
 }
