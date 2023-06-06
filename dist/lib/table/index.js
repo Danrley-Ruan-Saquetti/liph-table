@@ -4,17 +4,23 @@ export function TableLiph(classTable, options) {
     let BODY;
     let FOOTER;
     let OPTIONS;
+    let DATA;
     const STATE = {
         headers: {
-            hidden: false
+            hidden: false,
         },
-        filters: {}
+        filters: {},
+        sort: {
+            column: "",
+            operator: "",
+        },
     };
     if (!TABLE) {
         throw new Error(`Element table not found`);
     }
     const setup = () => {
         OPTIONS = options;
+        DATA = options.data;
         // # Add Table Wrapper
         const tableWrapper = document.createElement("div");
         HEADER = tableWrapper;
@@ -35,13 +41,17 @@ export function TableLiph(classTable, options) {
         FOOTER = footerWrapper;
         footerWrapper.classList.add("table-footer-wrapper");
         TABLE.appendChild(footerWrapper);
-        loadHeaders();
-        loadData(OPTIONS.data);
+        reload(OPTIONS.data, true);
     };
     // # Util
-    const getHeaders = (args) => {
-        // @ts-expect-error
-        const headers = args || Object.keys(args).length > 0 ? options.headers.filter(_header => Object.keys(args).find(key => _header[`${key}`] && _header[`${key}`] === args[`${key}`])) : options.headers;
+    const geTableLiphHeaders = (args) => {
+        const headers = args && Object.keys(args).length > 0
+            ? options.headers.filter((_header) => Object.keys(args).find((key) => 
+            // @ts-expect-error
+            (typeof _header[`${key}`] == "undefined" && !args[`${key}`]) ||
+                // @ts-expect-error
+                _header[`${key}`] === args[`${key}`]))
+            : options.headers;
         return headers;
     };
     // # Use Case
@@ -54,53 +64,88 @@ export function TableLiph(classTable, options) {
         const rowHeader = document.createElement("div");
         rowHeader.classList.add("table-row", "header");
         HEADER.innerHTML = "";
-        const headers = getHeaders({ hidden: false });
+        const headers = geTableLiphHeaders({ hidden: false });
         headers.forEach((_header) => {
             // # Add Header
             const cellHeader = document.createElement("div");
+            const btToggleSort = document.createElement("div");
+            const content = document.createElement("div");
+            const span = document.createElement("span");
+            btToggleSort.classList.add("sort-column");
             cellHeader.classList.add("table-header", "cell");
             cellHeader.setAttribute("data-table-header-name", `${_header.name}`);
-            cellHeader.innerHTML = _header.content || "";
+            span.classList.add("value");
+            span.innerHTML = _header.content || "";
+            cellHeader.onclick = () => sortColumn(_header.name);
+            content.appendChild(span);
+            content.appendChild(btToggleSort);
+            cellHeader.appendChild(content);
             rowHeader.appendChild(cellHeader);
         });
         HEADER.appendChild(rowHeader);
         STATE.headers.hidden = false;
     };
     const load = (data) => {
-        reload(data, STATE.headers.hidden);
+        DATA = data;
+        reload(DATA, STATE.headers.hidden);
     };
     const loadData = (data) => {
-        const headers = getHeaders({ hidden: false });
+        const headers = geTableLiphHeaders({ hidden: false });
         BODY.innerHTML = "";
         data.forEach((_data) => {
             // # Add Row
             const rowData = document.createElement("div");
             rowData.classList.add("table-row", "body");
-            for (const key in _data) {
-                if (!headers.find(_header => _header.name == key)) {
-                    continue;
-                }
+            headers.forEach(({ name }) => {
                 // ## Add Data Value
                 const cellData = document.createElement("div");
                 cellData.classList.add("table-data", "cell");
-                cellData.innerHTML = _data[key] || "";
+                // @ts-expect-error
+                cellData.setAttribute(name, _data[name] ? `${_data[name]}` : "");
+                // @ts-expect-error
+                cellData.innerHTML = _data[name] ? `${_data[name]}` : "";
                 rowData.appendChild(cellData);
-            }
+            });
             BODY.appendChild(rowData);
         });
     };
-    const setHidden = (name, value = true) => {
-        const index = OPTIONS.headers.findIndex(_header => _header.name == name);
+    const setColumnHidden = (column, value = true) => {
+        const index = OPTIONS.headers.findIndex((_header) => _header.name == column);
         if (index < 0) {
-            throw new Error(`Column "${typeof name == "string" ? name : ""}" not found`);
+            throw new Error(`Column "${typeof column == "string" ? column : ""}" not found`);
         }
         OPTIONS.headers[index].hidden = value;
         STATE.headers.hidden = true;
     };
+    const sortColumn = (column) => {
+        STATE.sort.operator =
+            STATE.sort.column == `${column}`
+                ? STATE.sort.operator == "ASC"
+                    ? "DESC"
+                    : "ASC"
+                : "ASC";
+        STATE.sort.column = `${column}`;
+        DATA = DATA.sort((a, b) => {
+            // ASC
+            if (STATE.sort.operator == "ASC") {
+                if (!isNaN(Number(a[column])) && !isNaN(Number(b[column]))) {
+                    return parseInt(`${a[column]}`) - parseInt(`${b[column]}`);
+                }
+                return `${a[column]}`.localeCompare(`${b[column]}`);
+            }
+            // DESC
+            if (!isNaN(Number(a[column])) && !isNaN(Number(b[column]))) {
+                return parseInt(`${b[column]}`) - parseInt(`${a[column]}`);
+            }
+            return `${b[column]}`.localeCompare(`${a[column]}`);
+        });
+        loadData(DATA);
+    };
     setup();
     return {
         load,
-        setHidden,
-        reload
+        setColumnHidden,
+        reload,
+        sortColumn,
     };
 }
