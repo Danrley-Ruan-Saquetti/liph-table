@@ -49,13 +49,8 @@ export function TableLiph(classTable, options) {
     };
     // # Util
     const geTableLiphHeaders = (args) => {
-        const headers = args && Object.keys(args).length > 0
-            ? options.headers.filter((_header) => Object.keys(args).find((key) => 
-            // @ts-expect-error
-            (typeof _header[`${key}`] == "undefined" && !args[`${key}`]) ||
-                // @ts-expect-error
-                _header[`${key}`] === args[`${key}`]))
-            : options.headers;
+        // @ts-expect-error
+        const headers = args && Object.keys(args).length > 0 ? options.headers.filter((_header) => Object.keys(args).find((key) => (typeof _header[`${key}`] == "undefined" && !args[`${key}`]) || _header[`${key}`] === args[`${key}`])) : options.headers;
         return headers;
     };
     // # Use Case
@@ -125,12 +120,7 @@ export function TableLiph(classTable, options) {
         STATE.headers.hidden = true;
     };
     const sortColumn = (column) => {
-        STATE.sort.operator =
-            STATE.sort.column == `${column}`
-                ? STATE.sort.operator == "ASC"
-                    ? "DESC"
-                    : "ASC"
-                : "ASC";
+        STATE.sort.operator = STATE.sort.column == `${column}` ? STATE.sort.operator == "ASC" ? "DESC" : "ASC" : "ASC";
         STATE.sort.column = `${column}`;
         DATA = DATA.sort((a, b) => {
             // ASC
