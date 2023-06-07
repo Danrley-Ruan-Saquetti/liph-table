@@ -4,7 +4,8 @@ export type TableLiphEvents =
   | "data/load"
   | "table/build"
   | "table/build/pre"
-  | "data/page/update";
+  | "data/page/update"
+  | "data/select";
 
 type TDataProps<T extends object> = Partial<T> & {};
 
@@ -56,10 +57,25 @@ export function TableLiph<T extends object>(
 
   const observer = ObserverEvent<TableLiphEvents>();
 
-  const STATE = {
+  const STATE: {
+    headers: {
+      hidden: boolean;
+    };
+    dataSelected: string[];
+    filters: {};
+    sort: {
+      column: string;
+      operator: string;
+    };
+    pagination: {
+      page: number;
+      size: number;
+    };
+  } = {
     headers: {
       hidden: false,
     },
+    dataSelected: [],
     filters: {},
     sort: {
       column: "",
@@ -112,6 +128,10 @@ export function TableLiph<T extends object>(
   };
 
   // # Util
+  const getColumn = () => {
+    return OPTIONS.headers.find((_header) => _header.index) || null;
+  };
+
   const updatePage = (page: number) => {
     STATE.pagination.page = page < 0 || page >= getPages() ? 0 : page;
     observer.emit("data/page/update", { data: STATE.pagination.page });
@@ -135,6 +155,7 @@ export function TableLiph<T extends object>(
   };
 
   // # Use Case
+  // ## Load Components
   const load = (data: TableLiphData<T>[]) => {
     DATA = data;
     reload({ data: DATA, forceHeader: STATE.headers.hidden });
@@ -214,6 +235,8 @@ export function TableLiph<T extends object>(
     const headers = geTableLiphHeaders({ hidden: false });
     BODY.innerHTML = "";
 
+    clearDataSelected();
+
     const rangeData = getRangePageData({ data, pagination });
 
     for (let i = 0; i < rangeData.length; i++) {
@@ -236,6 +259,17 @@ export function TableLiph<T extends object>(
 
         rowData.appendChild(cellData);
       });
+
+      const columnIndex = getColumn();
+
+      if (columnIndex) {
+        // @ts-expect-error
+        rowData.setAttribute("data-row-index", `${_data[columnIndex.name]}`);
+
+        rowData.onclick = ({ ctrlKey }) =>
+          // @ts-expect-error
+          updateDataSelected(_data[columnIndex.name], ctrlKey);
+      }
 
       BODY.appendChild(rowData);
     }
@@ -267,6 +301,21 @@ export function TableLiph<T extends object>(
     FOOTER.appendChild(footerInfo);
   };
 
+  const loadDataSelected = (data: string[]) => {
+    BODY.querySelectorAll(".table-data-selected").forEach((row) =>
+      row.classList.toggle("table-data-selected", false)
+    );
+
+    data.forEach((index) => {
+      const row = BODY.querySelector(
+        `[data-row-index="${index}"]`
+      ) as HTMLElement;
+
+      row && row.classList.add("table-data-selected");
+    });
+  };
+
+  // ## Column
   const setColumnHidden = (column: keyof T, value = true) => {
     const index = OPTIONS.headers.findIndex(
       (_header) => _header.name == column
@@ -313,6 +362,31 @@ export function TableLiph<T extends object>(
     loadData({ data: DATA });
   };
 
+  // ## Data
+  const updateDataSelected = (index: any, isMaintain: boolean) => {
+    const indexAlreadySelected = STATE.dataSelected.findIndex(
+      (data) => data == `${index}`
+    );
+
+    !isMaintain && clearDataSelected();
+
+    if (indexAlreadySelected < 0) {
+      STATE.dataSelected.push(`${index}`);
+    } else {
+      STATE.dataSelected.splice(indexAlreadySelected, 1);
+    }
+
+    loadDataSelected(STATE.dataSelected);
+
+    observer.emit("data/select", { data: STATE.dataSelected });
+  };
+
+  const clearDataSelected = () => {
+    STATE.dataSelected.splice(0, STATE.dataSelected.length);
+    loadDataSelected(STATE.dataSelected);
+  };
+
+  // ## Page
   const getRangePageIndex = (
     pagination: { page: number; size: number } = STATE.pagination
   ) => {

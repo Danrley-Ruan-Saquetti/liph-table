@@ -11,6 +11,7 @@ export function TableLiph(classTable, options) {
         headers: {
             hidden: false,
         },
+        dataSelected: [],
         filters: {},
         sort: {
             column: "",
@@ -53,6 +54,9 @@ export function TableLiph(classTable, options) {
         reload({ data: OPTIONS.data, forceHeader: true });
     };
     // # Util
+    const getColumn = () => {
+        return OPTIONS.headers.find((_header) => _header.index) || null;
+    };
     const updatePage = (page) => {
         STATE.pagination.page = page < 0 || page >= getPages() ? 0 : page;
         observer.emit("data/page/update", { data: STATE.pagination.page });
@@ -68,6 +72,7 @@ export function TableLiph(classTable, options) {
         return headers;
     };
     // # Use Case
+    // ## Load Components
     const load = (data) => {
         DATA = data;
         reload({ data: DATA, forceHeader: STATE.headers.hidden });
@@ -115,6 +120,7 @@ export function TableLiph(classTable, options) {
     const loadData = ({ data = DATA, pagination, }) => {
         const headers = geTableLiphHeaders({ hidden: false });
         BODY.innerHTML = "";
+        clearDataSelected();
         const rangeData = getRangePageData({ data, pagination });
         for (let i = 0; i < rangeData.length; i++) {
             const _data = rangeData[i];
@@ -131,6 +137,14 @@ export function TableLiph(classTable, options) {
                 cellData.innerHTML = _data[name] ? `${_data[name]}` : "";
                 rowData.appendChild(cellData);
             });
+            const columnIndex = getColumn();
+            if (columnIndex) {
+                // @ts-expect-error
+                rowData.setAttribute("data-row-index", `${_data[columnIndex.name]}`);
+                rowData.onclick = ({ ctrlKey }) => 
+                // @ts-expect-error
+                updateDataSelected(_data[columnIndex.name], ctrlKey);
+            }
             BODY.appendChild(rowData);
         }
         observer.emit("data/load", { data: rangeData });
@@ -152,6 +166,14 @@ export function TableLiph(classTable, options) {
         footerInfo.appendChild(nav);
         FOOTER.appendChild(footerInfo);
     };
+    const loadDataSelected = (data) => {
+        BODY.querySelectorAll(".table-data-selected").forEach((row) => row.classList.toggle("table-data-selected", false));
+        data.forEach((index) => {
+            const row = BODY.querySelector(`[data-row-index="${index}"]`);
+            row && row.classList.add("table-data-selected");
+        });
+    };
+    // ## Column
     const setColumnHidden = (column, value = true) => {
         const index = OPTIONS.headers.findIndex((_header) => _header.name == column);
         if (index < 0) {
@@ -184,6 +206,24 @@ export function TableLiph(classTable, options) {
         });
         loadData({ data: DATA });
     };
+    // ## Data
+    const updateDataSelected = (index, isMaintain) => {
+        const indexAlreadySelected = STATE.dataSelected.findIndex((data) => data == `${index}`);
+        !isMaintain && clearDataSelected();
+        if (indexAlreadySelected < 0) {
+            STATE.dataSelected.push(`${index}`);
+        }
+        else {
+            STATE.dataSelected.splice(indexAlreadySelected, 1);
+        }
+        loadDataSelected(STATE.dataSelected);
+        observer.emit("data/select", { data: STATE.dataSelected });
+    };
+    const clearDataSelected = () => {
+        STATE.dataSelected.splice(0, STATE.dataSelected.length);
+        loadDataSelected(STATE.dataSelected);
+    };
+    // ## Page
     const getRangePageIndex = (pagination = STATE.pagination) => {
         const initial = pagination.page * pagination.size;
         const final = initial + pagination.size;

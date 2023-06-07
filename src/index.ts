@@ -73,6 +73,10 @@ const tableLiphConfig: TableLiphOption<IUser> = { headers, data };
 function App() {
   const table = TableLiph(".table", tableLiphConfig);
 
+  table.on("data/select", ({ data }) => {});
+  table.on("data/load", ({ data }) => {});
+  table.on("table/build", ({ data }) => {});
+  table.on("table/build/pre", ({ data }) => {});
   table.on("data/page/update", () => {
     const el = document.querySelector(`[name="current-page"]`);
     if (el) {
@@ -93,7 +97,7 @@ function App() {
     .querySelector('[name="hidden-column-true"]')
     ?.addEventListener("click", () => table.setColumnHidden("email", true));
   document.querySelector('[name="add-data"]')?.addEventListener("click", () => {
-    data.push({ age: 17, name: "Dan Ruan", id: data.length });
+    data.push({ age: 17, name: "Dan Ruan", id: data.length + 1 });
     table.load(data);
   });
   document

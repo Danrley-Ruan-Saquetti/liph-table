@@ -52,6 +52,10 @@ const tableLiphConfig = { headers, data };
 function App() {
     var _a, _b, _c, _d, _e, _f, _g, _h, _j;
     const table = TableLiph(".table", tableLiphConfig);
+    table.on("data/select", ({ data }) => { });
+    table.on("data/load", ({ data }) => { });
+    table.on("table/build", ({ data }) => { });
+    table.on("table/build/pre", ({ data }) => { });
     table.on("data/page/update", () => {
         const el = document.querySelector(`[name="current-page"]`);
         if (el) {
@@ -67,7 +71,7 @@ function App() {
     (_d = document
         .querySelector('[name="hidden-column-true"]')) === null || _d === void 0 ? void 0 : _d.addEventListener("click", () => table.setColumnHidden("email", true));
     (_e = document.querySelector('[name="add-data"]')) === null || _e === void 0 ? void 0 : _e.addEventListener("click", () => {
-        data.push({ age: 17, name: "Dan Ruan", id: data.length });
+        data.push({ age: 17, name: "Dan Ruan", id: data.length + 1 });
         table.load(data);
     });
     (_f = document
