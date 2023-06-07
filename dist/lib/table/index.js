@@ -15,7 +15,7 @@ export function TableLiph(classTable, options) {
             operator: "",
         },
         pagination: {
-            page: 1,
+            page: 0,
             size: 15,
         },
     };
@@ -45,9 +45,21 @@ export function TableLiph(classTable, options) {
         FOOTER = footerWrapper;
         footerWrapper.classList.add("table-footer-wrapper");
         TABLE.appendChild(footerWrapper);
+        loadFooter();
         reload(OPTIONS.data, true);
     };
     // # Util
+    const updatePage = (page) => {
+        console.log(STATE.pagination);
+        if (page >= 0 && DATA.length > getRangePageIndex().final) {
+            STATE.pagination.page = page;
+        }
+        else {
+            STATE.pagination.page = 0;
+        }
+        console.log(STATE.pagination);
+        console.log("");
+    };
     const geTableLiphHeaders = (args) => {
         // @ts-expect-error
         const headers = args && Object.keys(args).length > 0 ? options.headers.filter((_header) => Object.keys(args).find((key) => (typeof _header[`${key}`] == "undefined" && !args[`${key}`]) || _header[`${key}`] === args[`${key}`])) : options.headers;
@@ -58,9 +70,14 @@ export function TableLiph(classTable, options) {
         DATA = data;
         reload(DATA, STATE.headers.hidden);
     };
-    const reload = (data, forceHeader) => {
+    const reload = (data = DATA, forceHeader) => {
+        const spanLength = FOOTER.querySelector(`[name="table-data-length"]`);
+        if (spanLength) {
+            spanLength.innerHTML = `${data.length}`;
+        }
+        updatePage(getPage());
         forceHeader && loadHeaders();
-        data && loadData(data);
+        loadData(data);
     };
     const loadHeaders = () => {
         // # Add Row Header
@@ -88,10 +105,11 @@ export function TableLiph(classTable, options) {
         HEADER.appendChild(rowHeader);
         STATE.headers.hidden = false;
     };
-    const loadData = (data) => {
+    const loadData = (data = DATA) => {
         const headers = geTableLiphHeaders({ hidden: false });
         BODY.innerHTML = "";
         const rangeData = getRangePageData({ data });
+        console.log(rangeData);
         for (let i = 0; i < rangeData.length; i++) {
             const _data = rangeData[i];
             // # Add Row
@@ -110,7 +128,23 @@ export function TableLiph(classTable, options) {
             BODY.appendChild(rowData);
         }
     };
-    const loadPagination = () => { };
+    const loadFooter = () => {
+        const footerInfo = document.createElement("div");
+        const actions = document.createElement("div");
+        const info = document.createElement("div");
+        const dataLength = document.createElement("span");
+        info.innerHTML = "Total: ";
+        info.appendChild(dataLength);
+        const nav = document.createElement("div");
+        dataLength.setAttribute("name", "table-data-length");
+        footerInfo.classList.add("footer-content");
+        info.classList.add("footer-info");
+        nav.classList.add("footer-pagination");
+        // footerInfo.appendChild(actions)
+        footerInfo.appendChild(info);
+        footerInfo.appendChild(nav);
+        FOOTER.appendChild(footerInfo);
+    };
     const setColumnHidden = (column, value = true) => {
         const index = OPTIONS.headers.findIndex((_header) => _header.name == column);
         if (index < 0) {
@@ -148,22 +182,22 @@ export function TableLiph(classTable, options) {
         return data.filter((_, i) => i >= initial && i <= final);
     };
     const setPage = (page) => {
-        if (DATA.length < getRangePageIndex().final) {
-            STATE.pagination.page = page;
-        }
+        updatePage(page);
+        loadData();
     };
     const setSize = (size) => {
         if (size > 0) {
             STATE.pagination.size = size;
         }
     };
+    const getPage = () => STATE.pagination.page;
     setup();
     return {
         load,
         setColumnHidden,
-        reload,
         sortColumn,
         setPage,
         setSize,
+        getPage
     };
 }

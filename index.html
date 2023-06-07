@@ -16,8 +16,27 @@
 <body>
     <div class="menu-options">
         <button type="button" name="load-data">Load</button>
-        <button type="button" name="hidden-column-false">Hidden false</button>
-        <button type="button" name="hidden-column-true">Hidden true</button>
+        <!-- <button type="button" name="hidden-column-false">Hidden false</button>
+        <button type="button" name="hidden-column-true">Hidden true</button> -->
+        <button type="button" name="add-data">Add</button>
+        <button type="button" name="remove-data">Remove</button>
+        <div class="page-wrapper">
+            <div class="pages">
+                <button type="button" class="bt-page" name="preview-page"><</button>
+                <div class="current-page" name="current-page">1</div>
+                <button type="button" class="bt-page" name="next-page">></button>
+            </div>
+            <div class="size">
+                <label for="size-table-data">Size: </label>
+                <select name="size-table-data" id="size-table-data">
+                    <option value="10">10</option>
+                    <option value="15">15</option>
+                    <option value="30">30</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+        </div>
     </div>
     <div class="table"></div>
 

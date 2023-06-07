@@ -21,10 +21,10 @@ export interface TableLiphFilter { }
 export type TableLiphModel<T extends object> = {
     load: (data: TableLiphData<T>[]) => void
     setColumnHidden: (column: keyof T, value?: boolean) => void
-    reload: (data?: TableLiphData<T>[] | undefined, forceHeader?: boolean | undefined) => void
     sortColumn: (column: keyof T) => void
     setPage: (page: number) => void
     setSize: (size: number) => void
+    getPage: () => number
 }
 
 export function TableLiph<T extends object>(classTable: string, options: TableLiphOption<T>): TableLiphModel<T> {
@@ -45,7 +45,7 @@ export function TableLiph<T extends object>(classTable: string, options: TableLi
             operator: "",
         },
         pagination: {
-            page: 1,
+            page: 0,
             size: 15,
         },
     }
@@ -80,10 +80,19 @@ export function TableLiph<T extends object>(classTable: string, options: TableLi
         footerWrapper.classList.add("table-footer-wrapper")
         TABLE.appendChild(footerWrapper)
 
+        loadFooter()
         reload(OPTIONS.data, true)
     }
 
     // # Util
+    const updatePage = (page: number) => {
+        console.log(STATE.pagination)
+        if (page >= 0 && DATA.length > getRangePageIndex().final) { STATE.pagination.page = page }
+        else { STATE.pagination.page = 0 }
+        console.log(STATE.pagination)
+        console.log("")
+    }
+
     const geTableLiphHeaders = (args?: Partial<TableLiphHeader<T>>) => {
         // @ts-expect-error
         const headers = args && Object.keys(args).length > 0 ? options.headers.filter((_header) => Object.keys(args).find((key) => (typeof _header[`${key}`] == "undefined" && !args[`${key}`]) || _header[`${key}`] === args[`${key}`]
@@ -98,9 +107,13 @@ export function TableLiph<T extends object>(classTable: string, options: TableLi
         reload(DATA, STATE.headers.hidden)
     }
 
-    const reload = (data?: TableLiphData<T>[], forceHeader?: boolean) => {
+    const reload = (data: TableLiphData<T>[] = DATA, forceHeader?: boolean) => {
+        const spanLength = FOOTER.querySelector(`[name="table-data-length"]`)
+        if (spanLength) { spanLength.innerHTML = `${data.length}` }
+
+        updatePage(getPage())
         forceHeader && loadHeaders()
-        data && loadData(data)
+        loadData(data)
     }
 
     const loadHeaders = () => {
@@ -139,11 +152,13 @@ export function TableLiph<T extends object>(classTable: string, options: TableLi
         STATE.headers.hidden = false
     }
 
-    const loadData = (data: TableLiphData<T>[]) => {
+    const loadData = (data: TableLiphData<T>[] = DATA) => {
         const headers = geTableLiphHeaders({ hidden: false })
         BODY.innerHTML = ""
 
         const rangeData = getRangePageData({ data })
+
+        console.log(rangeData)
 
         for (let i = 0; i < rangeData.length; i++) {
             const _data = rangeData[i]
@@ -170,7 +185,29 @@ export function TableLiph<T extends object>(classTable: string, options: TableLi
         }
     }
 
-    const loadPagination = () => { }
+    const loadFooter = () => {
+        const footerInfo = document.createElement("div")
+        const actions = document.createElement("div")
+
+        const info = document.createElement("div")
+        const dataLength = document.createElement("span")
+
+        info.innerHTML = "Total: "
+        info.appendChild(dataLength)
+
+        const nav = document.createElement("div")
+
+        dataLength.setAttribute("name", "table-data-length")
+        footerInfo.classList.add("footer-content")
+        info.classList.add("footer-info")
+        nav.classList.add("footer-pagination")
+
+        // footerInfo.appendChild(actions)
+        footerInfo.appendChild(info)
+        footerInfo.appendChild(nav)
+
+        FOOTER.appendChild(footerInfo)
+    }
 
     const setColumnHidden = (column: keyof T, value = true) => {
         const index = OPTIONS.headers.findIndex((_header) => _header.name == column)
@@ -217,21 +254,24 @@ export function TableLiph<T extends object>(classTable: string, options: TableLi
     }
 
     const setPage = (page: number) => {
-        if (DATA.length < getRangePageIndex().final) { STATE.pagination.page = page }
+        updatePage(page)
+        loadData()
     }
 
     const setSize = (size: number) => {
         if (size > 0) { STATE.pagination.size = size }
     }
 
+    const getPage = () => STATE.pagination.page
+
     setup()
 
     return {
         load,
         setColumnHidden,
-        reload,
         sortColumn,
         setPage,
         setSize,
+        getPage
     }
 }
