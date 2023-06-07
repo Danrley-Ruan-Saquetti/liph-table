@@ -1,3 +1,4 @@
+import { ObserverEvent } from "./util/observer.js";
 export function TableLiph(classTable, options) {
     const TABLE = document.querySelector(`${classTable}`);
     let HEADER;
@@ -5,6 +6,7 @@ export function TableLiph(classTable, options) {
     let FOOTER;
     let OPTIONS;
     let DATA;
+    const observer = ObserverEvent();
     const STATE = {
         headers: {
             hidden: false,
@@ -25,6 +27,7 @@ export function TableLiph(classTable, options) {
     const setup = () => {
         OPTIONS = options;
         DATA = options.data;
+        observer.emit("table/build/pre", { data: TABLE });
         // # Add Table Wrapper
         const tableWrapper = document.createElement("div");
         HEADER = tableWrapper;
@@ -45,37 +48,43 @@ export function TableLiph(classTable, options) {
         FOOTER = footerWrapper;
         footerWrapper.classList.add("table-footer-wrapper");
         TABLE.appendChild(footerWrapper);
+        observer.emit("table/build", { data: TABLE });
         loadFooter();
-        reload(OPTIONS.data, true);
+        reload({ data: OPTIONS.data, forceHeader: true });
     };
     // # Util
     const updatePage = (page) => {
-        const { initial, final } = getRangePageIndex();
-        if (page >= 0 && (DATA.length > final || (DATA.length > initial && DATA.length < final))) {
-            STATE.pagination.page = page;
-        }
-        else {
-            STATE.pagination.page = 0;
-        }
+        STATE.pagination.page = page < 0 || page >= getPages() ? 0 : page;
+        observer.emit("data/page/update", { data: STATE.pagination.page });
     };
     const geTableLiphHeaders = (args) => {
-        // @ts-expect-error
-        const headers = args && Object.keys(args).length > 0 ? options.headers.filter((_header) => Object.keys(args).find((key) => (typeof _header[`${key}`] == "undefined" && !args[`${key}`]) || _header[`${key}`] === args[`${key}`])) : options.headers;
+        const headers = args && Object.keys(args).length > 0
+            ? options.headers.filter((_header) => Object.keys(args).find((key) => 
+            // @ts-expect-error
+            (typeof _header[`${key}`] == "undefined" && !args[`${key}`]) ||
+                // @ts-expect-error
+                _header[`${key}`] === args[`${key}`]))
+            : options.headers;
         return headers;
     };
     // # Use Case
     const load = (data) => {
         DATA = data;
-        reload(DATA, STATE.headers.hidden);
+        reload({ data: DATA, forceHeader: STATE.headers.hidden });
     };
-    const reload = (data = DATA, forceHeader) => {
+    const reload = (args) => {
+        const { data = DATA, forceHeader, pagination = STATE.pagination, } = args || {
+            data: DATA,
+            forceHeader: false,
+            pagination: STATE.pagination,
+        };
         const spanLength = FOOTER.querySelector(`[name="table-data-length"]`);
         if (spanLength) {
             spanLength.innerHTML = `${data.length}`;
         }
-        updatePage(getPage());
+        updatePage(pagination.page);
         forceHeader && loadHeaders();
-        loadData(data);
+        loadData({ data, pagination });
     };
     const loadHeaders = () => {
         // # Add Row Header
@@ -103,10 +112,10 @@ export function TableLiph(classTable, options) {
         HEADER.appendChild(rowHeader);
         STATE.headers.hidden = false;
     };
-    const loadData = (data = DATA) => {
+    const loadData = ({ data = DATA, pagination, }) => {
         const headers = geTableLiphHeaders({ hidden: false });
         BODY.innerHTML = "";
-        const rangeData = getRangePageData({ data });
+        const rangeData = getRangePageData({ data, pagination });
         for (let i = 0; i < rangeData.length; i++) {
             const _data = rangeData[i];
             // # Add Row
@@ -124,6 +133,7 @@ export function TableLiph(classTable, options) {
             });
             BODY.appendChild(rowData);
         }
+        observer.emit("data/load", { data: rangeData });
     };
     const loadFooter = () => {
         const footerInfo = document.createElement("div");
@@ -151,7 +161,12 @@ export function TableLiph(classTable, options) {
         STATE.headers.hidden = true;
     };
     const sortColumn = (column) => {
-        STATE.sort.operator = STATE.sort.column == `${column}` ? STATE.sort.operator == "ASC" ? "DESC" : "ASC" : "ASC";
+        STATE.sort.operator =
+            STATE.sort.column == `${column}`
+                ? STATE.sort.operator == "ASC"
+                    ? "DESC"
+                    : "ASC"
+                : "ASC";
         STATE.sort.column = `${column}`;
         DATA = DATA.sort((a, b) => {
             // ASC
@@ -167,7 +182,7 @@ export function TableLiph(classTable, options) {
             }
             return `${b[column]}`.localeCompare(`${a[column]}`);
         });
-        loadData(DATA);
+        loadData({ data: DATA });
     };
     const getRangePageIndex = (pagination = STATE.pagination) => {
         const initial = pagination.page * pagination.size;
@@ -179,26 +194,35 @@ export function TableLiph(classTable, options) {
         return data.filter((_, i) => i >= initial && i < final);
     };
     const setPage = (page) => {
-        updatePage(page);
-        reload();
+        if (page <= 0 || page > getPages()) {
+            return;
+        }
+        reload({ pagination: { page: page - 1, size: STATE.pagination.size } });
     };
     const setSize = (size) => {
-        console.log(size);
-        if (size > 0) {
+        if (size >= 0) {
             STATE.pagination.size = size;
         }
         reload();
     };
-    const getPage = () => STATE.pagination.page;
+    const getPages = () => {
+        return Math.ceil(DATA.length / STATE.pagination.size);
+    };
     const getSize = () => STATE.pagination.size;
+    const getCurrentPage = () => STATE.pagination.page + 1;
     setup();
+    observer.clearListeners(false);
     return {
         load,
         setColumnHidden,
         sortColumn,
         setPage,
         setSize,
-        getPage,
-        getSize
+        getPages,
+        getCurrentPage,
+        getSize,
+        on: (evt, data) => observer.on(evt, data),
+        clearListeners: () => observer.clearListeners(false),
+        removeListener: (code) => observer.removeListener(code),
     };
 }
