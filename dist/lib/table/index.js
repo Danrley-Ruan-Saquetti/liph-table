@@ -51,15 +51,12 @@ export function TableLiph(classTable, options) {
     // # Util
     const updatePage = (page) => {
         const { initial, final } = getRangePageIndex();
-        console.log({ initial, final }, DATA.length, STATE.pagination);
         if (page >= 0 && (DATA.length > final || (DATA.length > initial && DATA.length < final))) {
             STATE.pagination.page = page;
         }
         else {
             STATE.pagination.page = 0;
         }
-        console.log(STATE.pagination);
-        console.log("");
     };
     const geTableLiphHeaders = (args) => {
         // @ts-expect-error
