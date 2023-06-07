@@ -49,7 +49,7 @@ const users = [
 const data = users.map((user, i) => (Object.assign(Object.assign({}, user), { id: i + 1 })));
 const tableLiphConfig = { headers, data, };
 function App() {
-    var _a, _b, _c, _d, _e, _f, _g;
+    var _a, _b, _c, _d, _e, _f, _g, _h;
     const table = TableLiph(".table", tableLiphConfig);
     (_a = document.querySelector('[name="load-data"]')) === null || _a === void 0 ? void 0 : _a.addEventListener("click", () => table.load(data));
     (_b = document.querySelector('[name="hidden-column-false"]')) === null || _b === void 0 ? void 0 : _b.addEventListener("click", () => table.setColumnHidden("email", false));
@@ -83,6 +83,10 @@ function App() {
         if (el) {
             el.innerHTML = `${table.getPage() + 1}`;
         }
+    });
+    (_h = document.querySelector('[name="size-table-data"]')) === null || _h === void 0 ? void 0 : _h.addEventListener("change", ({ target }) => {
+        // @ts-expect-error
+        table.setSize(Number(target.value));
     });
 }
 window.onload = App;

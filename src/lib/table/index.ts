@@ -25,6 +25,7 @@ export type TableLiphModel<T extends object> = {
     setPage: (page: number) => void
     setSize: (size: number) => void
     getPage: () => number
+    getSize: () => number
 }
 
 export function TableLiph<T extends object>(classTable: string, options: TableLiphOption<T>): TableLiphModel<T> {
@@ -86,8 +87,10 @@ export function TableLiph<T extends object>(classTable: string, options: TableLi
 
     // # Util
     const updatePage = (page: number) => {
-        console.log(STATE.pagination)
-        if (page >= 0 && DATA.length > getRangePageIndex().final) { STATE.pagination.page = page }
+        const { initial, final } = getRangePageIndex()
+
+        console.log({ initial, final }, DATA.length, STATE.pagination)
+        if (page >= 0 && (DATA.length > final || (DATA.length > initial && DATA.length < final))) { STATE.pagination.page = page }
         else { STATE.pagination.page = 0 }
         console.log(STATE.pagination)
         console.log("")
@@ -157,8 +160,6 @@ export function TableLiph<T extends object>(classTable: string, options: TableLi
         BODY.innerHTML = ""
 
         const rangeData = getRangePageData({ data })
-
-        console.log(rangeData)
 
         for (let i = 0; i < rangeData.length; i++) {
             const _data = rangeData[i]
@@ -250,19 +251,23 @@ export function TableLiph<T extends object>(classTable: string, options: TableLi
     const getRangePageData = ({ data = DATA, pagination = STATE.pagination, }: { data?: TableLiphData<T>[], pagination?: { page: number, size: number } }) => {
         const { final, initial } = getRangePageIndex(pagination)
 
-        return data.filter((_, i) => i >= initial && i <= final)
+        return data.filter((_, i) => i >= initial && i < final)
     }
 
     const setPage = (page: number) => {
         updatePage(page)
-        loadData()
+        reload()
     }
 
     const setSize = (size: number) => {
+        console.log(size)
         if (size > 0) { STATE.pagination.size = size }
+        reload()
     }
 
     const getPage = () => STATE.pagination.page
+
+    const getSize = () => STATE.pagination.size
 
     setup()
 
@@ -272,6 +277,7 @@ export function TableLiph<T extends object>(classTable: string, options: TableLi
         sortColumn,
         setPage,
         setSize,
-        getPage
+        getPage,
+        getSize
     }
 }

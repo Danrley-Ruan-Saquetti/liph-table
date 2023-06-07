@@ -50,8 +50,9 @@ export function TableLiph(classTable, options) {
     };
     // # Util
     const updatePage = (page) => {
-        console.log(STATE.pagination);
-        if (page >= 0 && DATA.length > getRangePageIndex().final) {
+        const { initial, final } = getRangePageIndex();
+        console.log({ initial, final }, DATA.length, STATE.pagination);
+        if (page >= 0 && (DATA.length > final || (DATA.length > initial && DATA.length < final))) {
             STATE.pagination.page = page;
         }
         else {
@@ -109,7 +110,6 @@ export function TableLiph(classTable, options) {
         const headers = geTableLiphHeaders({ hidden: false });
         BODY.innerHTML = "";
         const rangeData = getRangePageData({ data });
-        console.log(rangeData);
         for (let i = 0; i < rangeData.length; i++) {
             const _data = rangeData[i];
             // # Add Row
@@ -179,18 +179,21 @@ export function TableLiph(classTable, options) {
     };
     const getRangePageData = ({ data = DATA, pagination = STATE.pagination, }) => {
         const { final, initial } = getRangePageIndex(pagination);
-        return data.filter((_, i) => i >= initial && i <= final);
+        return data.filter((_, i) => i >= initial && i < final);
     };
     const setPage = (page) => {
         updatePage(page);
-        loadData();
+        reload();
     };
     const setSize = (size) => {
+        console.log(size);
         if (size > 0) {
             STATE.pagination.size = size;
         }
+        reload();
     };
     const getPage = () => STATE.pagination.page;
+    const getSize = () => STATE.pagination.size;
     setup();
     return {
         load,
@@ -198,6 +201,7 @@ export function TableLiph(classTable, options) {
         sortColumn,
         setPage,
         setSize,
-        getPage
+        getPage,
+        getSize
     };
 }

@@ -88,6 +88,10 @@ function App() {
         const el = document.querySelector(`[name="current-page"]`)
         if (el) { el.innerHTML = `${table.getPage() + 1}` }
     })
+    document.querySelector('[name="size-table-data"]')?.addEventListener("change", ({ target }) => {
+        // @ts-expect-error
+        table.setSize(Number(target.value))
+    })
 }
 
 window.onload = App
