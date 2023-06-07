@@ -1,11 +1,11 @@
 import { IEvent, ObserverEvent } from "./util/observer.js";
 
 export type TableLiphEvents =
-  | "data/load"
+  | "body/load"
   | "table/build"
   | "table/build/pre"
-  | "data/page/update"
-  | "data/select";
+  | "body/page/update"
+  | "row/select";
 
 type TDataProps<T extends object> = Partial<T> & {};
 
@@ -91,9 +91,9 @@ export function TableLiph<T extends object>(
     throw new Error(`Element table not found`);
   }
 
-  const setup = () => {
-    OPTIONS = options;
-    DATA = options.data;
+  const setup = (args: TableLiphOption<T>) => {
+    OPTIONS = args;
+    DATA = args.data;
 
     observer.emit("table/build/pre", { data: TABLE });
 
@@ -124,7 +124,7 @@ export function TableLiph<T extends object>(
     observer.emit("table/build", { data: TABLE });
 
     loadFooter();
-    reload({ data: OPTIONS.data, forceHeader: true });
+    loadComponents({ data: OPTIONS.data, forceHeader: true });
   };
 
   // # Util
@@ -134,7 +134,7 @@ export function TableLiph<T extends object>(
 
   const updatePage = (page: number) => {
     STATE.pagination.page = page < 0 || page >= getPages() ? 0 : page;
-    observer.emit("data/page/update", { data: STATE.pagination.page });
+    observer.emit("body/page/update", { data: STATE.pagination.page });
   };
 
   const geTableLiphHeaders = (args?: Partial<TableLiphHeader<T>>) => {
@@ -158,10 +158,10 @@ export function TableLiph<T extends object>(
   // ## Load Components
   const load = (data: TableLiphData<T>[]) => {
     DATA = data;
-    reload({ data: DATA, forceHeader: STATE.headers.hidden });
+    loadComponents({ data: DATA, forceHeader: STATE.headers.hidden });
   };
 
-  const reload = (args?: {
+  const loadComponents = (args?: {
     data?: TableLiphData<T>[];
     forceHeader?: boolean;
     pagination?: {
@@ -274,7 +274,7 @@ export function TableLiph<T extends object>(
       BODY.appendChild(rowData);
     }
 
-    observer.emit("data/load", { data: rangeData });
+    observer.emit("body/load", { data: rangeData });
   };
 
   const loadFooter = () => {
@@ -306,13 +306,20 @@ export function TableLiph<T extends object>(
       row.classList.toggle("table-data-selected", false)
     );
 
+    const rows: HTMLElement[] = [];
+
     data.forEach((index) => {
       const row = BODY.querySelector(
         `[data-row-index="${index}"]`
       ) as HTMLElement;
 
-      row && row.classList.add("table-data-selected");
+      if (row) {
+        row.classList.add("table-data-selected");
+        rows.push(row);
+      }
     });
+
+    return rows;
   };
 
   // ## Column
@@ -376,9 +383,9 @@ export function TableLiph<T extends object>(
       STATE.dataSelected.splice(indexAlreadySelected, 1);
     }
 
-    loadDataSelected(STATE.dataSelected);
+    const rows = loadDataSelected(STATE.dataSelected);
 
-    observer.emit("data/select", { data: STATE.dataSelected });
+    observer.emit("row/select", { data: { values: STATE.dataSelected, rows } });
   };
 
   const clearDataSelected = () => {
@@ -412,14 +419,16 @@ export function TableLiph<T extends object>(
     if (page <= 0 || page > getPages()) {
       return;
     }
-    reload({ pagination: { page: page - 1, size: STATE.pagination.size } });
+    loadComponents({
+      pagination: { page: page - 1, size: STATE.pagination.size },
+    });
   };
 
   const setSize = (size: number) => {
     if (size >= 0) {
       STATE.pagination.size = size;
     }
-    reload();
+    loadComponents();
   };
 
   const getPages = () => {
@@ -430,7 +439,7 @@ export function TableLiph<T extends object>(
 
   const getCurrentPage = () => STATE.pagination.page + 1;
 
-  setup();
+  setup(options);
 
   observer.clearListeners(false);
 

@@ -73,11 +73,11 @@ const tableLiphConfig: TableLiphOption<IUser> = { headers, data };
 function App() {
   const table = TableLiph(".table", tableLiphConfig);
 
-  table.on("data/select", ({ data }) => {});
-  table.on("data/load", ({ data }) => {});
+  table.on("row/select", ({ data }) => console.log(data));
+  table.on("body/load", ({ data }) => {});
   table.on("table/build", ({ data }) => {});
   table.on("table/build/pre", ({ data }) => {});
-  table.on("data/page/update", () => {
+  table.on("body/page/update", () => {
     const el = document.querySelector(`[name="current-page"]`);
     if (el) {
       el.innerHTML = `${table.getCurrentPage()}`;
