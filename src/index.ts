@@ -11,7 +11,7 @@ export interface IUser {
   id: number;
   name: string;
   age: number;
-  email: string;
+  email?: string;
 }
 
 const headers: TableLiphHeader<IUser>[] = [
@@ -21,7 +21,7 @@ const headers: TableLiphHeader<IUser>[] = [
   { name: "email", content: "Email", hidden: true },
 ];
 
-const users = [
+const users: Omit<IUser, "id">[] = [
   { age: 1, name: "Dan Ruan", email: "dan@liph.com" },
   { age: 1, name: "Dan Ruan" },
   { age: 2, name: "Dan Ruan", email: "dan@liph.com" },
@@ -68,12 +68,16 @@ const data: TableLiphData<IUser>[] = users.map((user, i) => ({
   id: i + 1,
 }));
 
-const tableLiphConfig: TableLiphOption<IUser> = { headers, data };
+const tableLiphConfig: TableLiphOption<IUser> = {
+  headers,
+  data,
+  selectRow: { addColumnSelect: true },
+};
 
 function App() {
   const table = TableLiph(".table", tableLiphConfig);
 
-  table.on("row/select", ({ data }) => console.log(data));
+  table.on("row/select", ({ data }) => {});
   table.on("body/load", ({ data }) => {});
   table.on("table/build", ({ data }) => {});
   table.on("table/build/pre", ({ data }) => {});
@@ -104,6 +108,7 @@ function App() {
     .querySelector('[name="remove-data"]')
     ?.addEventListener("click", () => {
       data.splice(0, 1);
+      table.load(data);
     });
 
   document

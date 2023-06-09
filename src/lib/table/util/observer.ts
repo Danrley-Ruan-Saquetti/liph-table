@@ -4,23 +4,27 @@ export interface IEvent {
 
 export type IEventData = any;
 
-export type TObserver<Events> = {
+export interface ObserverEventData {
+  data: IEventData;
+}
+
+export type ObserverListener<Events> = {
   handler: (data: IEvent) => void;
   evt: Events;
   code: number;
   main?: boolean;
 };
 
-export interface ObserverEventModel<Events extends string> {
+export interface ObserverEventModel<Events> {
   on: <E extends Events>(
     evt: E,
     handler: (data: IEvent) => void,
     main?: boolean
   ) => number;
-  emit: <U extends Events>(evt: U, data: IEvent) => void;
+  emit: <U extends Events>(evt: U, data: IEvent) => Promise<void>;
   removeListener: (code: number) => void;
   clearListeners: (main?: boolean) => void;
-  listeners: TObserver<Events>[];
+  listeners: ObserverListener<Events>[];
 }
 
 function randomId() {
@@ -38,14 +42,12 @@ function randomId() {
   return Number(idString);
 }
 
-export function ObserverEvent<
-  Events extends string
->(): ObserverEventModel<Events> {
+export function ObserverEvent<Events>(): ObserverEventModel<Events> {
   const listeners: ObserverEventModel<Events>["listeners"] = [];
 
   const on: ObserverEventModel<Events>["on"] = <E extends Events>(
     evt: E,
-    handler: (data: IEvent) => void,
+    handler: (data: ObserverEventData) => void,
     main?: boolean
   ) => {
     const code = randomId();
@@ -55,19 +57,19 @@ export function ObserverEvent<
     return code;
   };
 
-  const emit: ObserverEventModel<Events>["emit"] = <U extends Events>(
+  const emit: ObserverEventModel<Events>["emit"] = async <U extends Events>(
     evt: U,
-    data: IEvent
+    data: ObserverEventData
   ) => {
-    setTimeout(() => {
-      listeners
-        .filter((_obs) => {
-          return _obs.evt == evt;
-        })
-        .forEach((_obs) => {
-          setTimeout(() => _obs.handler(data), 1);
-        });
-    }, 1);
+    /* eslint no-async-promise-executor: ["off"] */
+
+    await new Promise(async (resolve) => {
+      const promises = listeners
+        .filter((_obs) => _obs.evt == evt)
+        .map((_obs) => _obs.handler(data));
+
+      await Promise.all(promises).then(resolve);
+    });
   };
 
   const removeListener: ObserverEventModel<Events>["removeListener"] = (
@@ -85,17 +87,14 @@ export function ObserverEvent<
   const clearListeners: ObserverEventModel<Events>["clearListeners"] = (
     main
   ) => {
+    /* eslint no-unused-expressions: ["off"] */
     for (let i = listeners.length - 1; i >= 0; i--) {
       if (listeners[i].main) {
-        if (main) {
-          listeners.splice(i, 1);
-        }
+        main && listeners.splice(i, 1);
 
         continue;
       }
-      if (!main) {
-        listeners.splice(i, 1);
-      }
+      !main && listeners.splice(i, 1);
     }
   };
 

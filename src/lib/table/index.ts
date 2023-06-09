@@ -19,10 +19,18 @@ export type TableLiphHeader<T extends object> = {
   hidden?: boolean;
   index?: boolean;
 };
+export type TableLiphHeaderMain<T extends object> = TableLiphHeader<T> & {
+  $type?: "select";
+};
 
 export interface TableLiphOption<T extends object> {
-  headers: TableLiphHeader<T>[];
+  headers: TableLiphHeaderMain<T>[];
   data: TableLiphData<T>[];
+  selectRow?:
+    | boolean
+    | {
+        addColumnSelect?: boolean;
+      };
 }
 
 export interface TableLiphFilter {}
@@ -92,8 +100,24 @@ export function TableLiph<T extends object>(
   }
 
   const setup = (args: TableLiphOption<T>) => {
-    OPTIONS = args;
+    OPTIONS = {
+      ...args,
+      ...(typeof args.selectRow == "undefined" && {
+        selectRow: true,
+      }),
+    };
     DATA = args.data;
+
+    if (typeof OPTIONS.selectRow == "object") {
+      if (OPTIONS.selectRow.addColumnSelect) {
+        OPTIONS.headers.push({
+          name: "__select",
+          content:
+            '<span><input type="checkbox" name="select-all-data" /></span>',
+          $type: "select",
+        });
+      }
+    }
 
     observer.emit("table/build/pre", { data: TABLE });
 
@@ -137,19 +161,26 @@ export function TableLiph<T extends object>(
     observer.emit("body/page/update", { data: STATE.pagination.page });
   };
 
-  const geTableLiphHeaders = (args?: Partial<TableLiphHeader<T>>) => {
+  const geTableLiphHeaders = (args?: Partial<TableLiphHeaderMain<T>>) => {
     const headers =
       args && Object.keys(args).length > 0
-        ? options.headers.filter((_header) =>
-            Object.keys(args).find(
-              (key) =>
-                // @ts-expect-error
-                (typeof _header[`${key}`] == "undefined" && !args[`${key}`]) ||
-                // @ts-expect-error
-                _header[`${key}`] === args[`${key}`]
-            )
-          )
-        : options.headers;
+        ? OPTIONS.headers.filter((_header) => {
+            let isSelected = true;
+            for (const key in args) {
+              if (
+                !(
+                  typeof _header[`${key}`] == "undefined" ||
+                  _header[`${key}`] === args[`${key}`]
+                )
+              ) {
+                isSelected = false;
+                break;
+              }
+            }
+
+            return isSelected;
+          })
+        : OPTIONS.headers;
 
     return headers;
   };
@@ -196,26 +227,48 @@ export function TableLiph<T extends object>(
 
     HEADER.innerHTML = "";
 
-    const headers = geTableLiphHeaders({ hidden: false });
+    let headers = geTableLiphHeaders({ hidden: false, $type: "select" });
+
+    headers = [
+      ...headers.filter((_h) => _h.$type == "select"),
+      ...headers.filter((_h) => typeof _h.$type == "undefined"),
+    ];
 
     headers.forEach((_header) => {
       // # Add Header
       const cellHeader = document.createElement("div");
-      const btToggleSort = document.createElement("div");
       const content = document.createElement("div");
       const span = document.createElement("span");
 
-      btToggleSort.classList.add("sort-column");
       cellHeader.classList.add("table-header", "cell");
       cellHeader.setAttribute("data-table-header-name", `${_header.name}`);
       span.classList.add("value");
 
       span.innerHTML = _header.content || "";
 
-      cellHeader.onclick = () => sortColumn(_header.name as keyof T);
+      if (_header.$type != "select") {
+        const btToggleSort = document.createElement("div");
+        btToggleSort.classList.add("sort-column");
+        content.appendChild(btToggleSort);
+
+        cellHeader.onclick = () => sortColumn(_header.name as keyof T);
+      } else {
+        const inputSelectAllData = cellHeader.querySelector(
+          'div span.value span input[type="checkbox"][name="select-all-data"]'
+        ) as HTMLElement;
+
+        console.log(cellHeader);
+        console.log(inputSelectAllData);
+
+        if (inputSelectAllData) {
+          inputSelectAllData.onclick = () => {
+            updateDataSelected([], false);
+            console.log(STATE.dataSelected);
+          };
+        }
+      }
 
       content.appendChild(span);
-      content.appendChild(btToggleSort);
       cellHeader.appendChild(content);
       rowHeader.appendChild(cellHeader);
     });
@@ -232,8 +285,13 @@ export function TableLiph<T extends object>(
     data?: TableLiphData<T>[];
     pagination?: { page: number; size: number };
   }) => {
-    const headers = geTableLiphHeaders({ hidden: false });
+    let headers = geTableLiphHeaders({ hidden: false });
     BODY.innerHTML = "";
+
+    headers = [
+      ...headers.filter((_h) => _h.$type == "select"),
+      ...headers.filter((_h) => typeof _h.$type == "undefined"),
+    ];
 
     clearDataSelected();
 
@@ -246,16 +304,22 @@ export function TableLiph<T extends object>(
       const rowData = document.createElement("div");
       rowData.classList.add("table-row", "body");
 
-      headers.forEach(({ name }) => {
+      headers.forEach(({ name, $type }) => {
+        const ref = !$type
+          ? // @ts-expect-error
+            _data[name]
+          : $type == "select"
+          ? '<span><input type="checkbox" /></span>'
+          : "";
+
         // ## Add Data Value
         const cellData = document.createElement("div");
 
         cellData.classList.add("table-data", "cell");
-        // @ts-expect-error
-        cellData.setAttribute(name, _data[name] ? `${_data[name]}` : "");
+        $type == "select" && cellData.classList.add("select");
+        cellData.setAttribute(name, ref ? `${ref}` : "");
 
-        // @ts-expect-error
-        cellData.innerHTML = _data[name] ? `${_data[name]}` : "";
+        cellData.innerHTML = ref ? `${ref}` : "";
 
         rowData.appendChild(cellData);
       });
@@ -265,16 +329,29 @@ export function TableLiph<T extends object>(
       if (columnIndex) {
         // @ts-expect-error
         rowData.setAttribute("data-row-index", `${_data[columnIndex.name]}`);
-
-        rowData.onclick = ({ ctrlKey }) =>
-          // @ts-expect-error
-          updateDataSelected(_data[columnIndex.name], ctrlKey);
       }
 
       BODY.appendChild(rowData);
     }
 
+    typeof OPTIONS.selectRow != "undefined" &&
+      OPTIONS.selectRow &&
+      setupSelected();
+
     observer.emit("body/load", { data: rangeData });
+  };
+
+  const setupSelected = () => {
+    const rows = BODY.querySelectorAll(
+      ".table-row.body"
+    ) as NodeListOf<HTMLElement>;
+
+    rows.forEach((row) => {
+      const index = row.getAttribute("data-row-index");
+      row.onclick = ({ ctrlKey }) => {
+        updateDataSelected([index], ctrlKey);
+      };
+    });
   };
 
   const loadFooter = () => {
@@ -370,18 +447,20 @@ export function TableLiph<T extends object>(
   };
 
   // ## Data
-  const updateDataSelected = (index: any, isMaintain: boolean) => {
-    const indexAlreadySelected = STATE.dataSelected.findIndex(
-      (data) => data == `${index}`
-    );
+  const updateDataSelected = (indexes: any[], isMaintain: boolean) => {
+    indexes.forEach((index) => {
+      const indexAlreadySelected = STATE.dataSelected.findIndex(
+        (data) => data == `${index}`
+      );
 
-    !isMaintain && clearDataSelected();
+      !isMaintain && clearDataSelected();
 
-    if (indexAlreadySelected < 0) {
-      STATE.dataSelected.push(`${index}`);
-    } else {
-      STATE.dataSelected.splice(indexAlreadySelected, 1);
-    }
+      if (indexAlreadySelected < 0) {
+        STATE.dataSelected.push(`${index}`);
+      } else {
+        STATE.dataSelected.splice(indexAlreadySelected, 1);
+      }
+    });
 
     const rows = loadDataSelected(STATE.dataSelected);
 

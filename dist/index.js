@@ -48,15 +48,19 @@ const users = [
     { age: 10, name: "Dan Ruan", email: "dan@liph.com" },
 ];
 const data = users.map((user, i) => (Object.assign(Object.assign({}, user), { id: i + 1 })));
-const tableLiphConfig = { headers, data };
+const tableLiphConfig = {
+    headers,
+    data,
+    selectRow: { addColumnSelect: true },
+};
 function App() {
     var _a, _b, _c, _d, _e, _f, _g, _h, _j;
     const table = TableLiph(".table", tableLiphConfig);
-    table.on("data/select", ({ data }) => { });
-    table.on("data/load", ({ data }) => { });
+    table.on("row/select", ({ data }) => { });
+    table.on("body/load", ({ data }) => { });
     table.on("table/build", ({ data }) => { });
     table.on("table/build/pre", ({ data }) => { });
-    table.on("data/page/update", () => {
+    table.on("body/page/update", () => {
         const el = document.querySelector(`[name="current-page"]`);
         if (el) {
             el.innerHTML = `${table.getCurrentPage()}`;
@@ -77,6 +81,7 @@ function App() {
     (_f = document
         .querySelector('[name="remove-data"]')) === null || _f === void 0 ? void 0 : _f.addEventListener("click", () => {
         data.splice(0, 1);
+        table.load(data);
     });
     (_g = document
         .querySelector('[name="preview-page"]')) === null || _g === void 0 ? void 0 : _g.addEventListener("click", () => {
